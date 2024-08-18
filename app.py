@@ -38,6 +38,7 @@ def generate_blocks(command_text):
                     "text": "Send"
                 },
                 "value": json.dumps({ "url": image_url, "title": command_text}),
+                "style": "primary",
                 "action_id": "send"
                 },
                 {
@@ -117,6 +118,20 @@ def post_ephem_message(ack, body, client, respond, action):
             "block_id": "generated image",
             "image_url": image_url,
             "alt_text": "generated image"
+        },
+        {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "image",
+                    "image_url": "https://cdn.getgrow.io/images/favicon/imagine.webp",
+                    "alt_text": "imagine logo"
+                },
+                {
+                    "type": 'mrkdwn',
+                    "text": "Posted using /imagine",
+                }
+            ]
         }
     ]
 
@@ -133,7 +148,7 @@ def post_ephem_message(ack, body, client, respond, action):
     client.chat_postMessage(
         token=os.environ.get("SLACK_BOT_TOKEN"),
         channel=body['container']['channel_id'],
-        text="todo",
+        text=title,
         blocks=blocks,
         username=profile.data['profile']['display_name_normalized'],
         icon_url=profile.data['profile']['image_512'],
