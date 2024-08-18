@@ -8,7 +8,7 @@ app = App(
     signing_secret=os.environ.get("SLACK_SIGNING_SECRET")
 )
 
-def generate_blocks(command_text):
+def generate_imagine_blocks(command_text):
     output = replicate.run(
     "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
     input={"prompt": command_text}
@@ -37,7 +37,7 @@ def generate_blocks(command_text):
                     "type": "plain_text",
                     "text": "Send"
                 },
-                "value": json.dumps({ "url": image_url, "title": command_text}),
+                "value": json.dumps({ "url": image_url, "title": command_text }),
                 "style": "primary",
                 "action_id": "send"
                 },
@@ -47,7 +47,7 @@ def generate_blocks(command_text):
                     "type": "plain_text",
                     "text": "Retry"
                 },
-                "value": "retry",
+                "value": json.dumps({ "title": command_text }),
                 "action_id": "retry"
                 },
                 {
@@ -65,14 +65,14 @@ def generate_blocks(command_text):
 
 
 @app.command("/imagine")
-def repeat_text(ack, command, client):
+def handle_imagine(ack, command, client):
     ack()        
     client.chat_postEphemeral(                       
         token=os.environ.get("SLACK_BOT_TOKEN"),
         channel=command['channel_id'],
         user=command['user_id'],
         text=command['text'],
-        blocks=generate_blocks(command['text'])
+        blocks=generate_imagine_blocks(command['text'])
     )
 
 @app.action("cancel")
@@ -86,9 +86,15 @@ def delete_ephem_message(ack, respond):
     })
 
 @app.action("retry")
-def retry_ephem_message(ack, respond):
+def retry_ephem_message(ack, respond, action):
     ack()
-    blocks=generate_blocks('retry')
+
+    actionValue = json.loads(action["value"])
+    title = actionValue["title"]
+    if not title:
+        return
+
+    blocks=generate_imagine_blocks(title)
     respond({
         "response_type": "ephemeral",
         "text": "retry",
