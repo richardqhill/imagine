@@ -162,6 +162,5 @@ def post_ephem_message(ack, body, client, respond, action):
         icon_url=profile.data['profile']['image_512'],
     )
 
-
 if __name__ == "__main__":
-    app.start(port=int(os.environ.get("PORT", 3000)))
+    app.start(port=int(os.environ.get("PORT", 8080)))

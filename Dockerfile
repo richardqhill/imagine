@@ -32,5 +32,5 @@ RUN adduser \
 USER appuser
 
 COPY . .
-EXPOSE 3000
+EXPOSE 8080
 CMD python3 app.py

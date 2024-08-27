@@ -2,8 +2,25 @@ services:
   api:
     build:
       context: .
-    ports:
-      - 3000:3000
     env_file: ".env"
+    ports:
+      - '8080:8080'
+  
+  nginx-proxy:
+    image: nginx:latest
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "80:80"
+    depends_on:
+      - api
 
- 
+  ngrok:
+    image: ngrok/ngrok:latest
+    env_file: ".env"
+    command: http nginx-proxy:80 --domain="${NGROK_DOMAIN}"
+    ports:
+      - '4040:4040'
+    depends_on:
+      - nginx-proxy
+   
