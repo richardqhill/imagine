@@ -2,14 +2,28 @@ import os
 import json
 
 from slack_bolt import App
+from slack_bolt.adapter.flask import SlackRequestHandler
+from flask import Flask, request
 import replicate
+
 
 app = App(
     token=os.environ.get("SLACK_BOT_TOKEN"),
     signing_secret=os.environ.get("SLACK_SIGNING_SECRET")
 )
 
+
+flask_app = Flask(__name__)
+handler = SlackRequestHandler(app)
+
+@flask_app.route("/slack/events", methods=["POST"])
+def slack_events():
+    return handler.handle(request)
+
+
 def generate_replicate_image(prompt_text: str):
+    # return "https://archive.org/download/placeholder-image/placeholder-image.jpg"
+
     replicate_res = replicate.run(
     "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
     input={"prompt": prompt_text}
@@ -63,8 +77,6 @@ def generate_imagine_blocks(prompt_text: str):
                 }
             ]
         }]
-     
-
 
 @app.command("/imagine")
 def handle_imagine(ack, command, client):
@@ -163,4 +175,4 @@ def post_ephem_message(ack, body, client, respond, action):
     )
 
 if __name__ == "__main__":
-    app.start(port=int(os.environ.get("PORT", 8080)))
+    flask_app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

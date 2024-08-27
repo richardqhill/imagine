@@ -33,4 +33,5 @@ USER appuser
 
 COPY . .
 EXPOSE 8080
+ENTRYPOINT gunicorn --bind :8080 --workers 1 --threads 2 --timeout 0 app:flask_app
 CMD python3 app.py
