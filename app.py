@@ -1,5 +1,6 @@
 import os
 import json
+
 from slack_bolt import App
 import replicate
 
@@ -8,20 +9,21 @@ app = App(
     signing_secret=os.environ.get("SLACK_SIGNING_SECRET")
 )
 
-def generate_imagine_blocks(command_text):
-    output = replicate.run(
+def generate_replicate_image(prompt_text: str):
+    replicate_res = replicate.run(
     "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
-    input={"prompt": command_text}
+    input={"prompt": prompt_text}
     )
+    return replicate_res[0]    
 
-    image_url = output[0]
-
+def generate_imagine_blocks(prompt_text: str):
+    image_url = generate_replicate_image(prompt_text)
     return [
         {
             "type": "image",
             "title": {
                 "type": "plain_text",
-                "text": command_text
+                "text": prompt_text
             },
             "block_id": "generated image",
             "image_url": image_url,
@@ -37,7 +39,7 @@ def generate_imagine_blocks(command_text):
                     "type": "plain_text",
                     "text": "Send"
                 },
-                "value": json.dumps({ "url": image_url, "title": command_text }),
+                "value": json.dumps({ "image_url": image_url, "prompt_text": prompt_text }),
                 "style": "primary",
                 "action_id": "send"
                 },
@@ -47,7 +49,7 @@ def generate_imagine_blocks(command_text):
                     "type": "plain_text",
                     "text": "Retry"
                 },
-                "value": json.dumps({ "title": command_text }),
+                "value": json.dumps({ "prompt_text": prompt_text }),
                 "action_id": "retry"
                 },
                 {
@@ -72,7 +74,7 @@ def handle_imagine(ack, command, client):
         channel=command['channel_id'],
         user=command['user_id'],
         text=command['text'],
-        blocks=generate_imagine_blocks(command['text'])
+        blocks=generate_imagine_blocks(prompt_text=command['text'])
     )
 
 @app.action("cancel")
@@ -90,11 +92,11 @@ def retry_ephem_message(ack, respond, action):
     ack()
 
     actionValue = json.loads(action["value"])
-    title = actionValue["title"]
-    if not title:
+    prompt_text = actionValue["prompt_text"]
+    if not prompt_text:
         return
 
-    blocks=generate_imagine_blocks(title)
+    blocks=generate_imagine_blocks(prompt_text)
     respond({
         "response_type": "ephemeral",
         "text": "retry",
@@ -107,11 +109,11 @@ def retry_ephem_message(ack, respond, action):
 def post_ephem_message(ack, body, client, respond, action):
     delete_ephem_message(ack, respond)
 
-    # extract image url and image title from action value
+    # extract image url and prompt text from the button action value
     actionValue = json.loads(action["value"])
-    image_url = actionValue["url"]
-    title = actionValue["title"]
-    if not image_url or not title:
+    image_url = actionValue["image_url"]
+    prompt_text = actionValue["prompt_text"]
+    if not image_url or not prompt_text:
         return
 
     blocks = [
@@ -119,7 +121,7 @@ def post_ephem_message(ack, body, client, respond, action):
             "type": "image",
             "title": {
                 "type": "plain_text",
-                "text": title
+                "text": prompt_text
             },
             "block_id": "generated image",
             "image_url": image_url,
@@ -154,7 +156,7 @@ def post_ephem_message(ack, body, client, respond, action):
     client.chat_postMessage(
         token=os.environ.get("SLACK_BOT_TOKEN"),
         channel=body['container']['channel_id'],
-        text=title,
+        text=prompt_text,
         blocks=blocks,
         username=profile.data['profile']['display_name_normalized'],
         icon_url=profile.data['profile']['image_512'],
